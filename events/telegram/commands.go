@@ -22,6 +22,7 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 
 	if isAddCmd(text) {
 		p.savePage(chatID, text, username)
+		return nil
 	}
 
 	switch text {
