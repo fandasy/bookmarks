@@ -2,6 +2,8 @@ package eventconsumer
 
 import (
 	"log"
+	"runtime"
+	"sync"
 	"telegramBot/events"
 	"time"
 )
@@ -12,6 +14,8 @@ type Consumer struct {
 	batchSize int
 }
 
+var jobs = make(chan []events.Event)
+
 func New(fetcher events.Fetcher, processor events.Processor, batchSize int) Consumer {
 	return Consumer{
 		fetcher:   fetcher,
@@ -21,8 +25,14 @@ func New(fetcher events.Fetcher, processor events.Processor, batchSize int) Cons
 }
 
 func (c Consumer) Start() error {
-	
+
+	defer close(jobs)
+
 	log.Print("Consumer started")
+
+	c.generateGoroutines()
+
+	wg := sync.WaitGroup{}
 
 	for {
 		gotEvents, err := c.fetcher.Fetch(c.batchSize)
@@ -38,16 +48,38 @@ func (c Consumer) Start() error {
 			continue
 		}
 
-		if err := c.hendleEvents(gotEvents); err != nil {
-			log.Print(err)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			jobs <- gotEvents
+		}()
 
-			continue
-		}
+		wg.Wait()
 	}
 }
 
-// 1. Add retry event, follback
-// 2. Add go func
+func (c *Consumer) generateGoroutines() {
+
+	numGoroutines := runtime.NumCPU()
+
+	for i := 1; i <= numGoroutines; i++ {
+		go func() {
+			for {
+				select {
+				case gotEvents := <-jobs:
+					if err := c.hendleEvents(gotEvents); err != nil {
+						log.Print(err)
+
+						continue
+					}
+					time.Sleep(1 * time.Second)
+				default:
+					continue
+				}
+			}
+		}()
+	}
+}
 
 func (c *Consumer) hendleEvents(events []events.Event) error {
 	for _, event := range events {
