@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"context"
 	"errors"
 	"telegramBot/clients/telegram"
 	"telegramBot/events"
@@ -68,7 +69,9 @@ func (p *Processor) processMesage(event events.Event) error {
 		return e.Wrap("can't process message", err)
 	}
 
-	if err := p.doCmd(event.Text, meta.ChatID, meta.Username); err != nil {
+	ctx := context.TODO()
+
+	if err := p.doCmd(ctx, event.Text, meta.ChatID, meta.Username); err != nil {
 		return e.Wrap("can't process message", err)
 	}
 
