@@ -24,6 +24,8 @@ func (c Consumer) Start() error {
 
 	log.Print("Consumer started")
 
+	defer func() {log.Print("Consumer finished the job")}()
+
 	for {
 		gotEvents, err := c.fetcher.Fetch(c.batchSize)
 		if err != nil {
@@ -50,11 +52,14 @@ func (c *Consumer) hendleEvents(events []events.Event) error {
 
 	for _, event := range events {
 		go func() {
+			tw := time.Now()
 			log.Printf("got new event: %s", event.Text)
 
 			if err := c.processor.Process(event); err != nil {
 				log.Printf("can't handle event: %s", err.Error())
 			}
+			
+			log.Printf("The %s event was over in %v", event.Text, time.Since(tw))
 		}()
 	}
 
