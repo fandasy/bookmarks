@@ -21,6 +21,8 @@ type JSONData struct {
 	BatchSize int    `json:"batchSize"`
 }
 
+const jsonFileName = "data.json"
+
 // batchSize - updatesBatchLimit, between 1 - 100, defaults to 100
 
 func main() {
@@ -30,7 +32,7 @@ func main() {
 
 	var launchData JSONData
 
-	openJSONfiles(&launchData)
+	openJSONfiles(jsonFileName, &launchData)
 
 	s, err := psql.New(launchData.ConnStr)
 	if err != nil {
@@ -54,7 +56,7 @@ func main() {
 	}
 }
 
-func openJSONfiles(launchData *JSONData) {
+func openJSONfiles(fileName string, launchData *JSONData) {
 	file, err := os.Open("data.json")
 	if err != nil {
 		log.Fatal("Failed to open JSON file: ", err)
