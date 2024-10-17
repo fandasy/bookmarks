@@ -1,33 +1,73 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"flag"
+	"io"
 	"log"
-	
+	"os"
+
 	tgClient "telegramBot/clients/telegram"
 	"telegramBot/consumer/event-consumer"
 	"telegramBot/events/telegram"
-	"telegramBot/storage/files"
+	"telegramBot/lib/l"
+	"telegramBot/storage/psql"
 )
 
-const (
-	tgBotHost   = "api.telegram.org"
-	storagePath = "storage"
-	batchSize   = 1000
-)
+type JSONData struct {
+	TgBotHost string `json:"tgBotHost"`
+	ConnStr   string `json:"PSQLconnection"`
+	BatchSize int    `json:"batchSize"`
+}
+
+// batchSize - updatesBatchLimit, between 1 - 100, defaults to 100
 
 func main() {
+	
+	// logs
+	l.Start()
+
+	var launchData JSONData
+
+	openJSONfiles(&launchData)
+
+	s, err := psql.New(launchData.ConnStr)
+	if err != nil {
+		log.Fatal("can't connect to storage: ", err)
+	}
+
+	if err := s.Init(context.TODO()); err != nil {
+		log.Fatal("can't init storage: ", err)
+	}
 
 	eventsProcessor := telegram.New(
-		tgClient.New(tgBotHost, mustToken()),
-		files.New(storagePath),
+		tgClient.New(launchData.TgBotHost, mustToken()),
+		s,
 	)
 
 	log.Print("service started")
 
-	consumer := eventconsumer.New(eventsProcessor, eventsProcessor, batchSize)
+	consumer := eventconsumer.New(eventsProcessor, eventsProcessor, launchData.BatchSize)
 	if err := consumer.Start(); err != nil {
-		log.Fatal("service is stopped", err)
+		log.Fatal("service is stopped ", err)
+	}
+}
+
+func openJSONfiles(launchData *JSONData) {
+	file, err := os.Open("data.json")
+	if err != nil {
+		log.Fatal("Failed to open JSON file: ", err)
+	}
+	defer file.Close()
+
+	byteValue, err := io.ReadAll(file)
+	if err != nil {
+		log.Fatal("Failed to read JSON file: ", err)
+	}
+
+	if err := json.Unmarshal(byteValue, launchData); err != nil {
+		log.Fatal("Failed to parse JSON file: ", err)
 	}
 }
 
@@ -46,3 +86,4 @@ func mustToken() string {
 
 	return *token
 }
+
