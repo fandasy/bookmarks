@@ -8,9 +8,9 @@ The _exe file contains everything you need to run
 - run.bat - launching an empty console (for convenience)
 
 JSON
-"tgBotHost": "api.telegram.org",
-"PSQLconnection": "user=username dbname=dbname password=pass host=ip port=5432 sslmode=disable",
-"batchSize": 100   // batchSize - updatesBatchLimit, between 1 - 100, defaults to 100
+- "tgBotHost": "api.telegram.org",
+- "PSQLconnection": "user=username dbname=dbname password=pass host=ip port=5432 sslmode=disable",
+- "batchSize": 100   // batchSize - updatesBatchLimit, between 1 - 100, defaults to 100
 
 
 Start
