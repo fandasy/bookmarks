@@ -5,15 +5,18 @@ import (
 	"errors"
 	"log"
 	"net/url"
+	"strconv"
 	"strings"
 	"telegramBot/lib/e"
 	"telegramBot/storage"
 )
 
 const (
-	RndCmd   = "/rnd"
-	HelpCmd  = "/help"
-	StartCmd = "/start"
+	RndCmd    = "/rnd"
+	HelpCmd   = "/help"
+	StartCmd  = "/start"
+	RemoveCmd = "/rm"
+	ListCmd   = "/list"
 )
 
 func (p *Processor) doCmd(ctx context.Context, text string, chatID int, username string) error {
@@ -22,8 +25,11 @@ func (p *Processor) doCmd(ctx context.Context, text string, chatID int, username
 	log.Printf("got new command '%s' from '%s'", text, username)
 
 	if isAddCmd(text) {
-		p.savePage(ctx ,chatID, text, username)
-		return nil
+		return p.savePage(ctx, chatID, text, username)
+	}
+
+	if strings.HasPrefix(text, "/rm") {
+		return p.removePage(ctx, chatID, text, username)
 	}
 
 	switch text {
@@ -33,6 +39,8 @@ func (p *Processor) doCmd(ctx context.Context, text string, chatID int, username
 		return p.sendHelp(chatID)
 	case StartCmd:
 		return p.sendHello(chatID)
+	case ListCmd:
+		return p.sendList(ctx, chatID, username)
 	default:
 		return p.tg.SendMessage(chatID, msgUnknownCommand)
 	}
@@ -66,6 +74,36 @@ func (p *Processor) savePage(ctx context.Context, chatID int, pageURL string, us
 	return nil
 }
 
+func (p *Processor) removePage(ctx context.Context, chatID int, rmPage string, username string) (err error) {
+	defer func() { err = e.Wrap("can't do command: remove page", err) }()
+
+	pageURL := strings.TrimPrefix(rmPage, "/rm ")
+
+	page := &storage.Page{
+		URL:      pageURL,
+		UserName: username,
+	}
+
+	isExists, err := p.storage.IsExists(ctx, page)
+	if err != nil {
+		return err
+	}
+
+	if !isExists {
+		return p.tg.SendMessage(chatID, msgNoSavedPagesRm+pageURL)
+	}
+
+	if err := p.storage.Remove(ctx, page); err != nil {
+		return err
+	}
+
+	if err := p.tg.SendMessage(chatID, msgRemove); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (p *Processor) sendRandom(ctx context.Context, chatID int, username string) (err error) {
 	defer func() { err = e.Wrap("can't do command: send random", err) }()
 
@@ -85,6 +123,27 @@ func (p *Processor) sendRandom(ctx context.Context, chatID int, username string)
 	return p.storage.Remove(ctx, page)
 }
 
+func (p *Processor) sendList(ctx context.Context, chatID int, username string) (err error) {
+	defer func() { err = e.Wrap("can't do command: send list", err) }()
+
+	pages, count, err := p.storage.PickPageList(ctx, username)
+	if err != nil && !errors.Is(err, storage.ErrNoSavedPages) {
+		return err
+	}
+
+	if errors.Is(err, storage.ErrNoSavedPages) {
+		return p.tg.SendMessage(chatID, msgNoSavedPages)
+	}
+
+	msgList := generateListMsg(pages.URLS, count)
+
+	if err := p.tg.SendMessage(chatID, msgList); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (p *Processor) sendHelp(chatID int) error {
 	return p.tg.SendMessage(chatID, msgHelp)
 }
@@ -101,4 +160,13 @@ func isURL(text string) bool {
 	u, err := url.Parse(text)
 
 	return err == nil && u.Host != ""
+}
+
+func generateListMsg(pages []string, count int) string {
+	pageList := strings.Join(pages, `
+`)
+	msgList := `There are ` + strconv.Itoa(count) + ` pages in your list:
+` + pageList
+
+	return msgList
 }

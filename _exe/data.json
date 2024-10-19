@@ -1,0 +1,5 @@
+{
+    "tgBotHost": "api.telegram.org",
+    "PSQLconnection": "user= dbname= password= host= port= sslmode=disable",
+    "batchSize": 100
+}
