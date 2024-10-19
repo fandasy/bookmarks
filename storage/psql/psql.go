@@ -56,6 +56,7 @@ func (s *Storage) PickRandom(ctx context.Context, userName string) (*storage.Pag
 }
 
 func (s *Storage) Remove(ctx context.Context, page *storage.Page) error {
+	
 	q := `DELETE FROM pages WHERE url = $1 AND user_name = $2`
 
 	if _, err := s.db.ExecContext(ctx, q, page.URL, page.UserName); err != nil {
@@ -63,6 +64,44 @@ func (s *Storage) Remove(ctx context.Context, page *storage.Page) error {
 	}
 
 	return nil
+}
+
+func (s *Storage) PickPageList(ctx context.Context, userName string) (*storage.PageList, int, error) {
+	
+	qCount := `SELECT COUNT(*) FROM pages WHERE user_name = $1`
+
+	q := `SELECT url FROM pages WHERE user_name = $1`
+
+	var count int
+
+	if err := s.db.QueryRowContext(ctx, qCount, userName).Scan(&count); err != nil {
+		return nil, 0, fmt.Errorf("unable to select page existence check: %w", err)
+	}
+
+	urls := make([]string, 0, count)
+
+	rows, err := s.db.QueryContext(ctx, q, userName)
+	if err == sql.ErrNoRows {
+		return nil, 0, storage.ErrNoSavedPages
+	}
+	if err != nil {
+		return nil, 0, fmt.Errorf("can't pick page list: %w", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url); err != nil {
+			return nil, 0, fmt.Errorf("can't pick rows page list: %w", err)
+		}
+		urls = append(urls, url)
+	}
+	
+	return &storage.PageList{
+		URLS: urls,
+		UserName: userName,
+	}, count, nil
 }
 
 func (s *Storage) IsExists(ctx context.Context, page *storage.Page) (bool, error) {

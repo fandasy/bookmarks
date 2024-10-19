@@ -57,7 +57,7 @@ func main() {
 }
 
 func openJSONfiles(fileName string, launchData *JSONData) {
-	file, err := os.Open("data.json")
+	file, err := os.Open(fileName)
 	if err != nil {
 		log.Fatal("Failed to open JSON file: ", err)
 	}
