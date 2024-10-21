@@ -1,6 +1,7 @@
 package eventconsumer
 
 import (
+	"context"
 	"log"
 	"telegramBot/events"
 	"time"
@@ -11,6 +12,8 @@ type Consumer struct {
 	processor events.Processor
 	batchSize int
 }
+
+var stopSignal bool
 
 func New(fetcher events.Fetcher, processor events.Processor, batchSize int) Consumer {
 	return Consumer{
@@ -43,9 +46,17 @@ func (c Consumer) Start() error {
 		if err := c.hendleEvents(gotEvents); err != nil {
 			log.Print(err)
 
-			continue
+			if !stopSignal {
+				continue
+			} else {break}
 		}
 	}
+
+	return nil
+}
+
+func Stop() {
+	stopSignal = true
 }
 
 func (c *Consumer) hendleEvents(events []events.Event) error {
@@ -54,7 +65,7 @@ func (c *Consumer) hendleEvents(events []events.Event) error {
 			tw := time.Now()
 			log.Printf("got new event: %s", event.Text)
 
-			if err := c.processor.Process(event); err != nil {
+			if err := c.processor.Process(context.TODO(), event); err != nil {
 				log.Printf("can't handle event: %s", err.Error())
 			}
 

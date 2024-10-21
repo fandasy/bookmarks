@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	tgClient "telegramBot/clients/telegram"
 	"telegramBot/consumer/event-consumer"
@@ -26,7 +28,7 @@ const jsonFileName = "data.json"
 // batchSize - updatesBatchLimit, between 1 - 100, defaults to 100
 
 func main() {
-	
+
 	// logs
 	l.Start()
 
@@ -48,12 +50,22 @@ func main() {
 		s,
 	)
 
-	log.Print("service started")
+	go func() {
+		log.Print("service started")
 
-	consumer := eventconsumer.New(eventsProcessor, eventsProcessor, launchData.BatchSize)
-	if err := consumer.Start(); err != nil {
-		log.Fatal("service is stopped ", err)
-	}
+		consumer := eventconsumer.New(eventsProcessor, eventsProcessor, launchData.BatchSize)
+		if err := consumer.Start(); err != nil {
+			log.Fatal("service is stopped ", err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+
+	sign := <- stop
+	log.Print("service stopping, sys signal: ", sign)
+
+	eventconsumer.Stop()
 }
 
 func openJSONfiles(fileName string, launchData *JSONData) {
@@ -88,4 +100,3 @@ func mustToken() string {
 
 	return *token
 }
-

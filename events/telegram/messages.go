@@ -16,7 +16,7 @@ const msgHello = "Hi there! \n\n" + msgHelp
 const (
 	msgUnknownCommand = "Unknown command"
 	msgNoSavedPages   = "You have no saved pages"
-	msgNoSavedPagesRm   = "You don't have a saved page: "
+	msgNoSavedPagesRm = "You don't have a saved page: "
 	msgSaved          = "Saved!"
 	msgRemove         = "Removed!"
 	msgAlreadyExists  = "You have already have this page in your list"
