@@ -1,5 +1,6 @@
 Hello reader.
-This is my first project related to telegram bot, which can save, delete, list, output random page (bookmark).
+This is my first project related to a telegram bot that can save, delete, list, output a random page (bookmark).
+It is assumed that you will use this project as a template for your projects
 
 How to start my project:
 The _exe file contains everything you need to run
